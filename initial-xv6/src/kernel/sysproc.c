@@ -108,3 +108,22 @@ sys_waitx(void)
     return -1;
   return ret;
 }
+
+void restore()
+{
+  struct proc *p = myproc();
+
+  p->trapframe_copy->kernel_satp = p->trapframe->kernel_satp;
+  p->trapframe_copy->kernel_sp = p->trapframe->kernel_sp;
+  p->trapframe_copy->kernel_trap = p->trapframe->kernel_trap;
+  p->trapframe_copy->kernel_hartid = p->trapframe->kernel_hartid;
+  *(p->trapframe) = *(p->trapframe_copy);
+}
+
+uint64 sys_sigreturn(void)
+{
+  restore();
+  myproc()->is_sigalarm = 0;
+  return myproc()->trapframe->a0;
+}
+

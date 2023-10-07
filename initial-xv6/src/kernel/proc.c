@@ -108,6 +108,7 @@ static struct proc *
 allocproc(void)
 {
   struct proc *p;
+  // Allocate a trapframe page.
 
   for (p = proc; p < &proc[NPROC]; p++)
   {
@@ -124,10 +125,20 @@ allocproc(void)
   return 0;
 
 found:
+  p->timeOfCreation = ticks;
   p->pid = allocpid();
   p->state = USED;
+  p->is_sigalarm = 0;
+  p->ticks = 0;
+  p->now_ticks = 0;
+  p->handler = 0;
 
-  // Allocate a trapframe page.
+  if ((p->trapframe_copy = (struct trapframe *)kalloc()) == 0)
+  {
+    release(&p->lock);
+    return 0;
+  }
+
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0)
   {
     freeproc(p);
@@ -163,7 +174,11 @@ freeproc(struct proc *p)
 {
   if (p->trapframe)
     kfree((void *)p->trapframe);
+
+  if (p->trapframe_copy)
+    kfree((void *)p->trapframe_copy);
   p->trapframe = 0;
+
   if (p->pagetable)
     proc_freepagetable(p->pagetable, p->sz);
   p->pagetable = 0;
@@ -175,6 +190,20 @@ freeproc(struct proc *p)
   p->killed = 0;
   p->xstate = 0;
   p->state = UNUSED;
+}
+
+uint64 sys_sigalarm(void)
+{
+  int ticks;
+  argint(0, &ticks);
+  uint64 handler;
+  argaddr(1, &handler);
+
+  myproc()->is_sigalarm = 0;
+  myproc()->ticks = ticks;
+  myproc()->now_ticks = 0;
+  myproc()->handler = handler;
+  return 0;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -466,8 +495,13 @@ void scheduler(void)
   c->proc = 0;
   for (;;)
   {
-    // Avoid deadlock by ensuring that devices can interrupt.
+
     intr_on();
+
+
+    // Avoid deadlock by ensuring that devices can interrupt.
+    
+    #ifdef RR
 
     for (p = proc; p < &proc[NPROC]; p++)
     {
@@ -487,7 +521,48 @@ void scheduler(void)
       }
       release(&p->lock);
     }
+
+    #else
+
+    #ifdef FCFS
+
+    struct proc* firstProcess = 0;
+
+      for (p = proc; p < &proc[NPROC]; p++)
+      {
+        acquire(&p->lock);
+        if (p->state == RUNNABLE)
+        {
+          if (!firstProcess || p->timeOfCreation < firstProcess->timeOfCreation)
+            {
+                if (firstProcess)
+                    release(&firstProcess->lock);
+
+                firstProcess = p;
+                continue;
+            }
+        }
+        release(&p->lock);
+      }
+
+      if (firstProcess)
+      {
+        firstProcess->state = RUNNING;
+        
+        c->proc = firstProcess;
+        p->numScheduled++;
+        swtch(&c->context, &firstProcess->context);
+
+        c->proc = 0;
+        release(&firstProcess->lock);
+      }
+
+    #endif
+    #endif
+    
+   
   }
+
 }
 
 // Switch to scheduler.  Must hold only p->lock

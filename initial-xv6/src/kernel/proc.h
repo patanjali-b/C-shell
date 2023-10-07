@@ -1,4 +1,6 @@
 // Saved registers for kernel context switches.
+
+#define FCFS
 struct context
 {
   uint64 ra;
@@ -102,7 +104,10 @@ struct proc
   void *chan;           // If non-zero, sleeping on chan
   int killed;           // If non-zero, have been killed
   int xstate;           // Exit status to be returned to parent's wait
-  int pid;              // Process ID
+  int pid;              // Process 
+  
+  int timeOfCreation;
+  uint numScheduled;
 
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process
@@ -119,6 +124,16 @@ struct proc
   uint rtime;                  // How long the process ran for
   uint ctime;                  // When was the process created
   uint etime;                  // When did the process exited
+  int is_sigalarm;
+  int ticks;
+  int now_ticks;
+  uint64 handler;
+  struct trapframe *trapframe_copy; 
+
+
+
+
+
 };
 
 extern struct proc proc[NPROC];
