@@ -20,6 +20,39 @@ static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
 
+#ifdef MLFQ
+struct queue process_queue[4];
+int limit = 30;
+
+void init_queue()
+{
+  for (int i = 0; i < 4; i++)
+  {
+    process_queue[i].no_of_processes = 0;
+    if(i == 0)
+    {
+      process_queue[i].queue_ticks = 1;
+    }
+    else if(i == 1)
+    {
+      process_queue[i].queue_ticks = 3;
+    }
+    else if(i == 2)
+    {
+      process_queue[i].queue_ticks = 9;
+    }
+    else
+    {
+      process_queue[i].queue_ticks = 15;
+    }
+  }
+}
+
+#endif
+
+
+
+
 // helps ensure that wakeups of wait()ing
 // parents are not lost. helps obey the
 // memory model when using p->parent.
@@ -46,6 +79,9 @@ void proc_mapstacks(pagetable_t kpgtbl)
 // initialize the proc table.
 void procinit(void)
 {
+  #ifdef MLFQ
+  init_queue();
+  #endif
   struct proc *p;
 
   initlock(&pid_lock, "nextpid");
@@ -132,7 +168,12 @@ found:
   p->ticks = 0;
   p->now_ticks = 0;
   p->handler = 0;
-
+  #ifdef MLFQ
+    p->proc_ticks = 0;
+    p->queue_no = 0;
+    p->add = 0;
+    p->wait_ticks = 0;
+  #endif
   if ((p->trapframe_copy = (struct trapframe *)kalloc()) == 0)
   {
     release(&p->lock);
@@ -480,6 +521,62 @@ int wait(uint64 addr)
   }
 }
 
+#ifdef MLFQ
+
+void add_queue(int queue_no, struct proc *p)
+{
+  process_queue[queue_no].array[process_queue[queue_no].no_of_processes] = p;
+  process_queue[queue_no].no_of_processes++;
+} 
+
+void remove_queue(int queue_no)
+{
+  // remove the first proc* from the queue
+  for(int i = 0; i < process_queue[queue_no].no_of_processes -1 ; i++)
+  {
+    process_queue[queue_no].array[i] = process_queue[queue_no].array[i + 1];
+  }
+  process_queue[queue_no].no_of_processes--;
+}
+
+int update_queue_no(struct proc* p){
+    //if the process has used all its time in the current queue then move it to the next queue
+    int change = 0;
+    //if wait_ticks is greater than or equal to limit, move to lower queue
+    if(p->wait_ticks >= limit){
+        if(p->queue_no != 0){
+            p->queue_no--;
+            change = 1;
+        }
+        p->proc_ticks = 0;
+        p->wait_ticks = 0;
+    }
+    if(p->proc_ticks >= process_queue[p->queue_no].queue_ticks){
+        if(p->queue_no != 3){
+            p->queue_no++;
+            change = 1;
+        }
+        p->proc_ticks = 0;
+        p->add = 0;
+    }
+
+    return change;
+
+}
+
+void addToFront(int queue_no, struct proc *p)
+{
+  
+  for (int i = process_queue[queue_no].no_of_processes; i >0; i--)
+  {
+    process_queue[queue_no].array[i] = process_queue[queue_no].array[i-1];
+  }
+  process_queue[queue_no].array[0] = p;
+  process_queue[queue_no].no_of_processes++;
+}
+
+#endif
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -557,8 +654,78 @@ void scheduler(void)
         release(&firstProcess->lock);
       }
 
+    
+    #else
+
+    #ifdef MLFQ
+
+
+     for (p = proc; p < &proc[NPROC]; p++)
+      {
+        //if p state is RUNNABLE then add it to the queue
+         
+        if (p->state == RUNNABLE && p->queue_present == 0)
+        {
+          update_queue_no(p);
+          if(!p->add){
+            add_queue(p->queue_no, p);
+          }  
+          else{
+            addToFront(p->queue_no, p);
+          }
+          p->queue_present = 1;
+        } 
+        else{
+          p->add = 0;
+        }
+      }
+
+      //find first non empty queue if all are empty then continue
+      int queue_no = 0;
+      int flag = 0;
+      while(process_queue[queue_no].no_of_processes == 0){
+        queue_no++;
+        if(queue_no == 4){
+          flag = 1;
+          break;
+        }
+      }
+      if(flag){
+        continue;
+      }
+
+      p = process_queue[queue_no].array[0];
+      // printf("%d\n",process_queue[p->queue_no].no_of_processes);
+      remove_queue(queue_no);
+      p->queue_present = 0;
+
+    if(p->state == RUNNABLE){
+
+      acquire(&p->lock);
+      p->state = RUNNING;
+      p->add = 1;
+      c->proc = p;
+   
+      swtch(&c->context, &p->context);
+      c->proc = 0;
+      release(&p->lock);
+    }
+
+      
+
+    #else
+      
+
+
+
+
+
+
+
     #endif
     #endif
+    #endif
+
     
    
   }
@@ -771,11 +938,24 @@ void procdump(void)
       continue;
     if (p->state >= 0 && p->state < NELEM(states) && states[p->state])
       state = states[p->state];
-    else
+    else{
+
       state = "???";
+    }
+    #ifdef MLFQ
+    printf("%d %s %s %d %d %d %d", p->pid, state, p->name, p->queue_no, p->proc_ticks,process_queue[p->queue_no].queue_ticks, p->add);
+    #else
     printf("%d %s %s", p->pid, state, p->name);
+    #endif
     printf("\n");
   }
+  // print all the processes in all queues
+  for(int i = 0; i < 4; i++){
+    printf("Queue %d: ", i);
+    for(int j = 0; j < process_queue[i].no_of_processes; j++){
+      printf("%d ", process_queue[i].array[j]->pid);
+    }
+    printf("\n");}
 }
 
 // waitx
@@ -842,7 +1022,15 @@ void update_time()
     if (p->state == RUNNING)
     {
       p->rtime++;
+      #ifdef MLFQ
+        p->proc_ticks++;
+      #endif
     }
+    #ifdef MLFQ
+    else{
+      p->wait_ticks++;
+    }
+    #endif
     release(&p->lock);
   }
 }

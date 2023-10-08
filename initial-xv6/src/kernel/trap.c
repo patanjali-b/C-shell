@@ -90,6 +90,15 @@ void usertrap(void)
       *(p->trapframe_copy) = *(p->trapframe);
       p->trapframe->epc = p->handler;
     }
+    #ifdef MLFQ
+
+    for(struct proc* pp = proc;pp<&proc[NPROC];pp++){
+    if(pp->state == RUNNABLE || pp->state == RUNNING){
+      printf("GRAPH %d %d %d\n",pp->pid,ticks,pp->queue_no);
+    }
+  }
+
+    #endif
     yield();
   }
 

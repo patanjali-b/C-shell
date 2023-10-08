@@ -1,0 +1,6 @@
+Script started on 2023-10-08 16:32:26+05:30 [TERM="xterm-256color" TTY="/dev/pts/2" COLUMNS="80" LINES="24"]
+bash: /home/patanjali/anaconda3/lib/libtinfo.so.6: no version information available (required by bash)
+[?2004h(base) ]0;patanjali@pop-os: ~/Desktop/OSN/Mini_Project_2/mini-project-2-patanjali-b/initial-xv6/src[01;32mpatanjali@pop-os[00m:[01;34m~/Desktop/OSN/Mini_Project_2/mini-project-2-patanjali-b/initial-xv6/src[00m$ exit
+[?2004lexit
+
+Script done on 2023-10-08 16:32:29+05:30 [COMMAND_EXIT_CODE="0"]

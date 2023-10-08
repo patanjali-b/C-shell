@@ -1,6 +1,6 @@
 // Saved registers for kernel context switches.
 
-#define FCFS
+#define MLFQ
 struct context
 {
   uint64 ra;
@@ -109,6 +109,8 @@ struct proc
   int timeOfCreation;
   uint numScheduled;
 
+  int readcount;
+
   // wait_lock must be held when using this:
   struct proc *parent; // Parent process
 
@@ -129,11 +131,26 @@ struct proc
   int now_ticks;
   uint64 handler;
   struct trapframe *trapframe_copy; 
+  
+  int proc_ticks;
+  int queue_no; // to know which queue the process is in
+  int add;
+  int queue_present;
+
+  int wait_ticks;
 
 
 
 
 
+};
+
+struct queue
+{
+
+  struct proc* array[NPROC]; // NPROC is no of processes
+  int no_of_processes;
+  int queue_ticks;
 };
 
 extern struct proc proc[NPROC];

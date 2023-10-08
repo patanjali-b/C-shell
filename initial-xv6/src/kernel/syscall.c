@@ -104,6 +104,7 @@ extern uint64 sys_close(void);
 extern uint64 sys_waitx(void);
 extern uint64 sys_sigalarm(void);
 extern uint64 sys_sigreturn(void);
+extern uint64 sys_getreadcount(void);
 
 
 
@@ -134,6 +135,7 @@ static uint64 (*syscalls[])(void) = {
 [SYS_waitx]   sys_waitx,
 [SYS_sigalarm]   sys_sigalarm,
 [SYS_sigreturn]   sys_sigreturn,
+[SYS_getreadcount]   sys_getreadcount,
 };
 
 void

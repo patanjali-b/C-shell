@@ -127,3 +127,8 @@ uint64 sys_sigreturn(void)
   return myproc()->trapframe->a0;
 }
 
+int sys_getreadcount(void) {
+    return myproc()->readcount;
+}
+
+

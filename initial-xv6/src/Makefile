@@ -134,6 +134,9 @@ UPROGS=\
 	$U/_zombie\
 	$U/_schedulertest\
 	$U/_alarmtest\
+	$U/_test_1\
+	$U/_test_2\
+	# $U/_getreadcount\
 
 fs.img: mkfs/mkfs README $(UPROGS)
 	mkfs/mkfs fs.img README $(UPROGS)
@@ -155,14 +158,14 @@ QEMUGDB = $(shell if $(QEMU) -help | grep -q '^-gdb'; \
 	then echo "-gdb tcp::$(GDBPORT)"; \
 	else echo "-s -p $(GDBPORT)"; fi)
 ifndef CPUS
-CPUS := 3
+CPUS := 1
 endif
 
-ifndef SCHEDULER
-    SCHEDULER:=RR
-endif
+# ifndef SCHEDULER
+#     SCHEDULER:=RR
+# endif
 
-CFLAGS+="-D$(SCHEDULER)"
+# CFLAGS+="-D$(SCHEDULER)"
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
