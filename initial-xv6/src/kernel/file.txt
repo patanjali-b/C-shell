@@ -1,0 +1,10 @@
+RR 
+Average rtime 14,  wtime 158
+
+
+FCFS
+Average rtime 14,  wtime 130
+
+MLFQ
+Average rtime 15,  wtime 156
+

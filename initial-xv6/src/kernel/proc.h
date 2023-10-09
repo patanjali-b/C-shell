@@ -1,6 +1,6 @@
 // Saved registers for kernel context switches.
 
-#define MLFQ
+
 struct context
 {
   uint64 ra;

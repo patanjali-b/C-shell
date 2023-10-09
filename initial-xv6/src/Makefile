@@ -161,11 +161,11 @@ ifndef CPUS
 CPUS := 1
 endif
 
-# ifndef SCHEDULER
-#     SCHEDULER:=RR
-# endif
+ifndef SCHEDULER
+    SCHEDULER:=RR
+endif
 
-# CFLAGS+="-D$(SCHEDULER)"
+CFLAGS+="-D$(SCHEDULER)"
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false

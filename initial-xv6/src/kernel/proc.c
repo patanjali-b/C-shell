@@ -19,10 +19,10 @@ extern void forkret(void);
 static void freeproc(struct proc *p);
 
 extern char trampoline[]; // trampoline.S
-
-#ifdef MLFQ
 struct queue process_queue[4];
 int limit = 30;
+
+#ifdef MLFQ
 
 void init_queue()
 {
@@ -710,17 +710,6 @@ void scheduler(void)
       c->proc = 0;
       release(&p->lock);
     }
-
-      
-
-    #else
-      
-
-
-
-
-
-
 
     #endif
     #endif
